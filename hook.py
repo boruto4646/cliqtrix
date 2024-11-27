@@ -8,6 +8,10 @@ WIKIPEDIA_API_URL = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 # LibreTranslate API URL
 LIBRETRANSLATE_API_URL = "https://libretranslate.com/translate"
 
+@app.route("/", methods=["GET"])
+def home():
+    return "The server is live and ready to handle requests!"
+
 @app.route('/zobot-webhook', methods=['POST'])
 def zobot_webhook():
     data = request.json
@@ -24,7 +28,7 @@ def zobot_webhook():
         query = translate_response.json().get("translatedText", query)
 
     # Fetch information from Wikipedia
-    wiki_response = requests.get(WIKIPEDIA_API_URL + query)
+    wiki_response = requests.get(WIKIPEDIA_API_URL + query.replace(" ", "_"))
     wiki_summary = wiki_response.json().get("extract", "No information found.")
 
     # Translate response back to user's language (if needed)
@@ -43,4 +47,3 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
