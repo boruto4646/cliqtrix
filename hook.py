@@ -14,17 +14,15 @@ def home():
 
 @app.route('/zobot-webhook', methods=['POST'])
 def zobot_webhook():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Invalid request. No JSON body found."}), 400
-
-    query = data.get("query", "").strip()
-    user_language = data.get("language", "en")
-
-    if not query:
-        return jsonify({"error": "No query provided in the request."}), 400
-
     try:
+        # Parse the JSON payload
+        data = request.json
+
+        # Extract the query and language from the nested structure
+        session_query_meta = data.get("session", {}).get("query", {}).get("meta", {}).get("value", {})
+        query = session_query_meta.get("query", "")
+        user_language = session_query_meta.get("language", "en")
+
         # Translate query to English (if needed)
         if user_language != "en":
             translate_response = requests.post(LIBRETRANSLATE_API_URL, json={
@@ -32,12 +30,10 @@ def zobot_webhook():
                 "source": user_language,
                 "target": "en"
             })
-            translate_response.raise_for_status()
             query = translate_response.json().get("translatedText", query)
 
         # Fetch information from Wikipedia
         wiki_response = requests.get(WIKIPEDIA_API_URL + query.replace(" ", "_"))
-        wiki_response.raise_for_status()
         wiki_summary = wiki_response.json().get("extract", "No information found.")
 
         # Translate response back to user's language (if needed)
@@ -47,14 +43,14 @@ def zobot_webhook():
                 "source": "en",
                 "target": user_language
             })
-            reverse_translate_response.raise_for_status()
             wiki_summary = reverse_translate_response.json().get("translatedText", wiki_summary)
 
         # Respond back to Zobot
         return jsonify({"response": wiki_summary})
 
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     import os
